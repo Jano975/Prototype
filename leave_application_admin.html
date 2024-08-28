@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leave Application - Admin</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f2f5;
+            padding: 20px;
+        }
+        .container {
+            width: 80%;
+            margin: 0 auto;
+        }
+        .apply-leave {
+            text-align: right;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .status {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="apply-leave">
+            <a href="{{ url_for('logout') }}" style="text-decoration: none; color: white; background-color: #4CAF50; padding: 10px; border-radius: 5px;">Logout</a>
+        </div>
+
+        <h2>All Leave Applications</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>User ID</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Reason</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                    <th>Reason (if Rejected)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for leave in leave_data %}
+                <tr>
+                    <td>{{ leave[1] }}</td> <!-- User ID -->
+                    <td>{{ leave[2] }}</td> <!-- Start Date -->
+                    <td>{{ leave[3] }}</td> <!-- End Date -->
+                    <td>{{ leave[5] }}</td> <!-- Leave Reason -->
+                    <td class="status">{{ leave[4] }}</td> <!-- Status -->
+                    <td>
+                        {% if leave[4] == 'Submitted, Pending Review' %}
+                            <form method="POST" action="{{ url_for('leave_application') }}">
+                                <input type="hidden" name="leave_id" value="{{ leave[0] }}"> <!-- Leave ID -->
+                                <button type="submit" name="action" value="Approve">Approve</button>
+                                <button type="submit" name="action" value="Reject">Reject</button>
+                            </form>
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if leave[4] == 'Rejected' %}
+                            {{ leave[6] }} <!-- Reason for Rejection -->
+                        {% elif leave[4] == 'Submitted, Pending Review' %}
+                            <form method="POST" action="{{ url_for('leave_application') }}">
+                                <input type="hidden" name="leave_id" value="{{ leave[0] }}"> <!-- Leave ID -->
+                                <input type="hidden" name="action" value="Reject">
+                                <input type="text" name="reason" placeholder="Enter reason for rejection" required>
+                                <button type="submit">Submit Reason</button>
+                            </form>
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
