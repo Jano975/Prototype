@@ -1,9 +1,14 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 import sqlite3
 import os
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Required for session management
+
+# Define a route for the home page
+@app.route('/home')
+def home():
+    return render_template('home.html')
 
 # Function to check user credentials and fetch user details
 def validate(username, password):
@@ -114,15 +119,31 @@ def leave_application():
         if request.method == 'POST':
             leave_id = request.form.get('leave_id')
             action = request.form.get('action')
-            reason = request.form.get('reason') if action == 'Reject' else None
-            update_leave_status(leave_id, action, reason)
+            reason = request.form.get('reason') if 'reason' in request.form else None
+            if action == 'Reject' and not reason:
+                flash('Please provide a reason for rejection.')
+                return redirect(url_for('leave_application'))
 
-            # Notify employee of approval or rejection
-            user_id = request.form.get('user_id')
-            if action == 'Approve':
-                create_notification(user_id, "Your leave request has been approved.")
-            elif action == 'Reject':
+            # Check if the 'Confirm' button was clicked after entering the reason
+            if request.form.get('confirm_reject') == 'Confirm' and reason:
+                # Process rejection with reason
+                update_leave_status(leave_id, 'Rejected', reason)
+
+                # Notify employee of rejection
+                user_id = request.form.get('user_id')
                 create_notification(user_id, f"Your leave request has been rejected. Reason: {reason}")
+
+            elif action == 'Approve':
+                # Process approval
+                update_leave_status(leave_id, 'Approved')
+
+                # Notify employee of approval
+                user_id = request.form.get('user_id')
+                create_notification(user_id, "Your leave request has been approved.")
+            else:
+                # If not confirmed or invalid action, do nothing
+                flash('Please confirm your action with a valid reason for rejection.')
+                return redirect(url_for('leave_application'))
 
         return render_template('leave_application_admin.html', user_details=user_details, leave_data=leave_data)
     else:
@@ -154,7 +175,10 @@ def update_leave_status(leave_id, status, reason=None):
     db_path = 'hrmdb.db'
     con = sqlite3.connect(db_path)
     cursor = con.cursor()
-    cursor.execute("UPDATE 'Leave Applications' SET Status = ?, Reason = ? WHERE Leave_ID = ?", (status, reason, leave_id))
+    if reason:
+        cursor.execute("UPDATE 'Leave Applications' SET Status = ?, Reason = ? WHERE Leave_ID = ?", (status, reason, leave_id))
+    else:
+        cursor.execute("UPDATE 'Leave Applications' SET Status = ? WHERE Leave_ID = ?", (status, leave_id))
     con.commit()
     con.close()
 
