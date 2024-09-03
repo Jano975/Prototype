@@ -8,7 +8,7 @@ app.secret_key = 'your_secret_key'  # Required for session management
 # Define a route for the home page
 @app.route('/home')
 def home():
-    return render_template('home.html')
+    return render_template('dashboard.html')
 
 # Function to check user credentials and fetch user details
 def validate(username, password):
@@ -68,6 +68,41 @@ def logout():
     session.pop('user', None)
     return redirect(url_for('login'))
 
+# Function to validate user credentials and fetch user details
+def validate(username, password):
+    db_path = 'hrmdb.db'
+    if not os.path.exists(db_path):
+        print(f"Database file not found at {db_path}")
+        return None
+    con = sqlite3.connect(db_path)
+    cursor = con.cursor()
+    cursor.execute("SELECT * FROM 'Employee Information' WHERE User_name = ? AND Pass_word = ?", (username, password))
+    result = cursor.fetchone()
+    con.close()
+    if result:
+        return result  # Return the user details
+    else:
+        return None
+
+# Function to fetch unread notifications for a user
+def fetch_notifications(user_id):
+    db_path = 'hrmdb.db'
+    con = sqlite3.connect(db_path)
+    cursor = con.cursor()
+    cursor.execute("SELECT * FROM 'Notifications' WHERE User_ID = ? AND Is_Read = 0 ORDER BY Created_At DESC", (user_id,))
+    notifications = cursor.fetchall()
+    con.close()
+    return notifications
+
+# Function to create a notification for a user
+def create_notification(user_id, message):
+    db_path = 'hrmdb.db'
+    con = sqlite3.connect(db_path)
+    cursor = con.cursor()
+    cursor.execute("INSERT INTO 'Notifications' (User_ID, Message) VALUES (?, ?)", (user_id, message))
+    con.commit()
+    con.close()
+
 # Route for the dashboard (post-login)
 @app.route('/dashboard')
 def dashboard():
@@ -103,7 +138,6 @@ def get_department_leave_data(department):
     con.close()
     return leave_data
 
-# Route for Leave Application
 @app.route('/leave_application', methods=['GET', 'POST'])
 def leave_application():
     if 'user' not in session:
@@ -114,41 +148,28 @@ def leave_application():
     department = user_details[11]  # Assuming 'Department' is the 12th column in 'Employee Information' table
 
     if 'Manager' in role:
-        # Admin view
         leave_data = get_department_leave_data(department)
         if request.method == 'POST':
             leave_id = request.form.get('leave_id')
-            action = request.form.get('action')
-            reason = request.form.get('reason') if 'reason' in request.form else None
-            if action == 'Reject' and not reason:
-                flash('Please provide a reason for rejection.')
-                return redirect(url_for('leave_application'))
+            action = request.form.get('confirm_action')
+            user_id = request.form.get('user_id')
 
-            # Check if the 'Confirm' button was clicked after entering the reason
-            if request.form.get('confirm_reject') == 'Confirm' and reason:
-                # Process rejection with reason
-                update_leave_status(leave_id, 'Rejected', reason)
-
-                # Notify employee of rejection
-                user_id = request.form.get('user_id')
-                create_notification(user_id, f"Your leave request has been rejected. Reason: {reason}")
-
-            elif action == 'Approve':
-                # Process approval
+            if action == 'Approve':
                 update_leave_status(leave_id, 'Approved')
-
-                # Notify employee of approval
-                user_id = request.form.get('user_id')
                 create_notification(user_id, "Your leave request has been approved.")
-            else:
-                # If not confirmed or invalid action, do nothing
-                flash('Please confirm your action with a valid reason for rejection.')
+                flash('Leave request approved successfully!')
+                return redirect(url_for('leave_application'))
+            
+            elif request.form.get('confirm_reject') == 'Confirm' and request.form.get('reason'):
+                reason = request.form.get('reason')
+                update_leave_status(leave_id, 'Rejected', reason)
+                create_notification(user_id, f"Your leave request has been rejected. Reason: {reason}")
+                flash('Leave request rejected successfully!')
                 return redirect(url_for('leave_application'))
 
         return render_template('leave_application_admin.html', user_details=user_details, leave_data=leave_data)
     else:
-        # Employee view
-        user_id = user_details[0]  # Assuming 'User_ID' is the first column in 'Employee Information' table
+        user_id = user_details[0]
         leave_data = get_user_leave_data(user_id)
         if request.method == 'POST':
             if 'apply_leave' in request.form:
@@ -157,10 +178,8 @@ def leave_application():
                 leave_reason = request.form.get('leave_reason')
                 apply_for_leave(user_id, start_date, end_date, leave_reason)
 
-                # Notify admin of new leave request
                 admin_id = get_admin_id(department)
                 create_notification(admin_id, "A new leave request has been submitted by an employee.")
-
                 return redirect(url_for('leave_application'))
             elif 'cancel_leave' in request.form:
                 leave_id = request.form.get('leave_id')
@@ -170,7 +189,7 @@ def leave_application():
         notifications = fetch_notifications(user_id)
         return render_template('leave_application_user.html', user_details=user_details, leave_data=leave_data, notifications=notifications)
 
-# Function to update leave status for admin
+# Function to update leave status
 def update_leave_status(leave_id, status, reason=None):
     db_path = 'hrmdb.db'
     con = sqlite3.connect(db_path)

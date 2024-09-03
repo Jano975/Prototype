@@ -137,11 +137,11 @@
         {% if request.endpoint != 'home' %}
         <div class="navigation-buttons">
             <button onclick="history.back()">Back</button> <!-- Back button -->
-            <a href="{{ url_for('home') }}">Home</a> <!-- Home button -->
+            <a href="{{ url_for('dashboard') }}">Home</a> <!-- Home button -->
         </div>
         {% else %}
         <div class="navigation-buttons">
-            <a href="{{ url_for('home') }}">Home</a> <!-- Home button -->
+            <a href="{{ url_for('dashboard') }}">Home</a> <!-- Home button -->
         </div>
         {% endif %}
 

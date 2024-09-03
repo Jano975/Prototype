@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Leave Applications - Admin{% endblock %}
+{% block title %}Leave Application - Admin2{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -27,14 +27,14 @@
                 <td class="status">{{ leave[4] }}</td> <!-- Status -->
                 <td>
                     {% if leave[4] == 'Submitted, Pending Review' %}
-                        <form method="POST" action="{{ url_for('leave_application') }}" onsubmit="return confirmReject(this);">
-                            <input type="hidden" name="leave_id" value="{{ leave[0] }}"> <!-- Leave ID -->
-                            <input type="hidden" name="user_id" value="{{ leave[1] }}"> <!-- User ID -->
-                            <button type="submit" name="action" value="Approve" class="approve-button">Approve</button>
-                            <textarea name="reason" placeholder="Reason for rejection" required style="display: none; margin-top: 10px;"></textarea>
-                            <button type="button" class="reject-button" onclick="showRejectReason(this);">Reject</button>
-                            <button type="submit" name="confirm_reject" value="Confirm" class="confirm-button" style="display: none;">Confirm</button>
-                        </form>
+                    <form method="POST" action="{{ url_for('leave_application') }}">
+                        <input type="hidden" name="leave_id" value="{{ leave[0] }}"> <!-- Leave ID -->
+                        <input type="hidden" name="user_id" value="{{ leave[1] }}"> <!-- User ID -->
+                        <button type="submit" name="confirm_action" value="Approve" class="approve-button">Approve</button>
+                        <textarea name="reason" placeholder="Reason for rejection" required style="display: none; margin-top: 10px;"></textarea>
+                        <button type="button" class="reject-button" onclick="showRejectReason(this);">Reject</button>
+                        <button type="submit" name="confirm_reject" value="Confirm" class="confirm-reject-button" style="display: none;">Confirm</button>
+                    </form>
                     {% else %}
                         N/A
                     {% endif %}
@@ -57,18 +57,19 @@
         // Show the textarea and confirm button for entering the reject reason
         const form = button.closest('form');
         const textarea = form.querySelector('textarea[name="reason"]');
-        const confirmButton = form.querySelector('button[name="confirm_reject"]');
+        const confirmRejectButton = form.querySelector('button[name="confirm_reject"]');
         textarea.style.display = 'block';
-        confirmButton.style.display = 'block';
+        confirmRejectButton.style.display = 'block';
         textarea.focus();
         button.style.display = 'none'; // Hide the reject button after clicked
     }
 
-    function confirmReject(form) {
-        // Ensure that a reason is provided and confirmed before allowing the reject action
+    function confirmApproveOrReject(form) {
+        // Ensure that a reason is provided for rejection
         const reason = form.querySelector('textarea[name="reason"]');
-        const confirmButton = form.querySelector('button[name="confirm_reject"]');
-        if (reason.style.display === 'block' && reason.value.trim() === '' && confirmButton.style.display === 'block') {
+        const confirmRejectButton = form.querySelector('button[name="confirm_reject"]');
+        
+        if (reason && reason.style.display === 'block' && reason.value.trim() === '' && confirmRejectButton.style.display === 'block') {
             alert('Please provide a reason for rejection and click Confirm.');
             return false;
         }
